@@ -9,18 +9,30 @@
           <div>
             <p>Player 1:</p>
             <div class="flex flex-wrap gap-2">
-              <Card v-for="card in playerOneHand" :key="card.id" :card="card" />
+
+              <Card v-for="card in playerOneHand" :key="card.id" :card="card"
+                @click="playerOneTurn ? pickForTurn(card) : null" class="cursor-pointer"
+                :class="{ 'translate-y-[-12px]': pickedForTurnCards.includes(card) }" />
+
             </div>
           </div>
-          <div class="w-full h-full flex gap-2">
-            <Card v-for="card in fieldCards" :key="card.id" :card="card" />
+          <div class="w-full relative">
+            <div class="w-full flex gap-2">
+              <Card v-for="card in fieldCards" :key="card.id" :card="card" />
+            </div>
+
+            <div class="w-full flex gap-2 absolute top-16 left-20">
+              <Card v-for="card in fieldDefenceCards" :key="card.id" :card="card" />
+            </div>
           </div>
+
           <div>
             <p>Player 2:</p>
             <div class="flex flex-wrap gap-2">
 
-              <Card v-for="card in playerTwoHand" :key="card.id" :card="card" @click="pickForTurn(card)"
-                class="cursor-pointer" :class="{ 'translate-y-[-12px]': pickedForTurnCards.includes(card) }" />
+              <Card v-for="card in playerTwoHand" :key="card.id" :card="card"
+                @click="playerOneTurn ? null : pickForDefence(card)" class="cursor-pointer"
+                :class="{ 'translate-y-[-12px]': pickedForDefenceCards.includes(card) }" />
 
             </div>
           </div>
@@ -33,12 +45,15 @@
     <div>
       <button @click="makeTurn">Make Turn</button>
     </div>
+    <div>
+      <button @click="makeDefenceTurn">Make Defence Turn</button>
+    </div>
   </main>
 </template>
 
 <script setup>
 import Card from '../components/Card.vue'
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 const gameStarted = ref(false)
 
@@ -118,7 +133,10 @@ const setTrump = () => {
   if (deck.value[cardIdx].value === 14) {
     setTrump()
   }
-  else return trumpCard.value = deck.value[cardIdx]
+  else {
+    trumpCard.value = deck.value[cardIdx]
+    deck.value.splice(deck.value.indexOf(trumpCard.value), 1)
+  }
 }
 
 const setDefaultDeck = () => {
@@ -167,32 +185,153 @@ const setDefaultDeck = () => {
 
 const startGame = () => {
   setDefaultDeck()
+  pickedForTurnCards.value = []
+  fieldCards.value = []
+  setTrump()
+  deck.value.map(card => {
+    if (card.suit === trumpCard.value.suit) {
+      card.value = card.value * 10
+    }
+  })
+  trumpCard.value.value = trumpCard.value.value * 10
   dealplayerOneHand()
   dealplayerTwoHand()
-  setTrump()
   gameStarted.value = true
 }
 
 const fieldCards = ref([])
 
+const fieldAttackCards = ref([])
+
+const fieldDefenceCards = ref([])
+
 const pickedForTurnCards = ref([])
 
 const pickForTurn = (card) => {
-  if (pickedForTurnCards.value.length > 0) {
-    if (pickedForTurnCards.value.includes(card)) {
-      const cardIdx = pickedForTurnCards.value.indexOf(card);
-      pickedForTurnCards.value.splice(cardIdx, 1);
+  if (fieldCards.value.length === 0) {
+    if (pickedForTurnCards.value.length > 0) {
+      if (pickedForTurnCards.value.includes(card)) {
+        const cardIdx = pickedForTurnCards.value.indexOf(card);
+        pickedForTurnCards.value.splice(cardIdx, 1);
 
+      }
+      else if (!pickedForTurnCards.value.find(pickedCard => pickedCard.rank === card.rank)) {
+        return
+      } else pickedForTurnCards.value.push(card)
     }
-    else if (!pickedForTurnCards.value.find(pickedCard => pickedCard.value === card.value)) {
-      return
-    } else pickedForTurnCards.value.push(card)
+    else pickedForTurnCards.value.push(card)
   }
-  else pickedForTurnCards.value.push(card)
+
+  else {
+    if (pickedForTurnCards.value.length > 0) {
+      if (fieldCards.value.includes(card)) {
+        const cardIdx = pickedForTurnCards.value.indexOf(card);
+        pickedForTurnCards.value.splice(cardIdx, 1);
+
+      }
+      else if (!fieldCards.value.find(fieldCard => fieldCard.rank === card.rank)) {
+        return
+      } else pickedForTurnCards.value.push(card)
+    }
+  }
+}
+
+
+const pickedForDefenceCards = ref([])
+
+
+const pickForDefence = (card) => {
+
+  if (pickedForDefenceCards.value.includes(card)) {
+    const cardIdx = pickedForDefenceCards.value.indexOf(card);
+    pickedForDefenceCards.value.splice(cardIdx, 1);
+
+  }
+  // else if (!pickedForDefenceCards.value.find(pickedCard => pickedCard.value === card.value)) {
+  //   return
+  // } 
+  else pickedForDefenceCards.value.push(card)
+
+
+}
+
+const finalBeatSet = ref([])
+
+const canBeat = computed(() => {
+
+  if (pickedForDefenceCards.value.length > 0 && pickedForDefenceCards.value.length === fieldCards.value.length) {
+    const pickedCardsCopy = pickedForDefenceCards.value
+
+    const beatSet = []
+
+    const canBeat = ref(true)
+
+    fieldCards.value.map(fieldCard => {
+      const canBeatSet = []
+      pickedCardsCopy.map(defenceCard => {
+        if (defenceCard.suit === fieldCard.suit || defenceCard.suit === trumpCard.value.suit && defenceCard.value > fieldCard.value) {
+          canBeatSet.push(defenceCard)
+          console.log('I push', defenceCard)
+          console.log('canBeatSet', canBeatSet)
+        }
+      })
+
+      if (canBeatSet.length === 0) {
+        console.log('no possible beat card')
+        canBeat.value = false;
+      }
+      if (pickedCardsCopy.length > 0) {
+        canBeatSet.reduce((minCard, currentCard) => {
+          return currentCard.value < minCard.value ? currentCard : minCard;
+        });
+      }
+
+      beatSet.push(...canBeatSet)
+      pickedCardsCopy.splice(pickedCardsCopy.indexOf(...canBeatSet), 1)
+    })
+
+    finalBeatSet.value.push(...beatSet)
+    return canBeat.value
+  }
+  else {
+    return false
+  }
+})
+
+const playerOneTurn = ref(true)
+
+const endTurn = () => {
+  playerOneTurn.value = !playerOneTurn.value
 }
 
 const makeTurn = () => {
-  fieldCards.value = pickedForTurnCards.value
+  fieldCards.value.push(...pickedForTurnCards.value)
+  if (playerOneTurn.value) {
+    pickedForTurnCards.value.map(card => playerOneHand.value.splice(playerOneHand.value.indexOf(card), 1))
+  } else {
+    pickedForTurnCards.value.map(card => playerTwoHand.value.splice(playerTwoHand.value.indexOf(card), 1))
+  }
+  pickedForTurnCards.value = []
+  endTurn()
+}
+
+const makeDefenceTurn = () => {
+  if (canBeat.value) {
+    fieldDefenceCards.value.push(...finalBeatSet.value)
+    console.log('def cards', finalBeatSet.value)
+    if (playerOneTurn.value) {
+      finalBeatSet.value.map(card => playerOneHand.value.splice(playerOneHand.value.indexOf(card), 1))
+    } else {
+      finalBeatSet.value.map(card => playerTwoHand.value.splice(playerTwoHand.value.indexOf(card), 1))
+    }
+    fieldCards.value.push(...fieldDefenceCards.value)
+    pickedForDefenceCards.value = [fieldDefenceCards.value]
+    endTurn()
+  }
+  else {
+    console.log('Can\'t beat! :\'(')
+  }
+
 }
 
 </script>
