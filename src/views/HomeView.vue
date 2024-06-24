@@ -18,7 +18,7 @@
           </div>
           <div class="w-full relative">
             <div class="w-full flex gap-2">
-              <Card v-for="card in fieldCards" :key="card.id" :card="card" />
+              <Card v-for="card in fieldAttackCards" :key="card.id" :card="card" />
             </div>
 
             <div class="w-full flex gap-2 absolute top-16 left-20">
@@ -186,7 +186,9 @@ const setDefaultDeck = () => {
 const startGame = () => {
   setDefaultDeck()
   pickedForTurnCards.value = []
-  fieldCards.value = []
+  // fieldCards.value = []
+  fieldAttackCards.value = []
+  fieldDefenceCards.value = []
   setTrump()
   deck.value.map(card => {
     if (card.suit === trumpCard.value.suit) {
@@ -199,16 +201,24 @@ const startGame = () => {
   gameStarted.value = true
 }
 
-const fieldCards = ref([])
+// const fieldCards = computed(() => {
+//   return [...fieldAttackCards.value, ...fieldDefenceCards.value]
+// })
+
+const fieldCards = []
 
 const fieldAttackCards = ref([])
 
 const fieldDefenceCards = ref([])
 
+const attackCards = ref([])
+const defenceCards = ref([])
+
 const pickedForTurnCards = ref([])
 
 const pickForTurn = (card) => {
-  if (fieldCards.value.length === 0) {
+  // if (fieldCards.value.length === 0) {
+  if (fieldCards.length === 0) {
     if (pickedForTurnCards.value.length > 0) {
       if (pickedForTurnCards.value.includes(card)) {
         const cardIdx = pickedForTurnCards.value.indexOf(card);
@@ -223,15 +233,35 @@ const pickForTurn = (card) => {
   }
 
   else {
-    if (pickedForTurnCards.value.length > 0) {
-      if (fieldCards.value.includes(card)) {
-        const cardIdx = pickedForTurnCards.value.indexOf(card);
-        pickedForTurnCards.value.splice(cardIdx, 1);
+    // if (pickedForTurnCards.value.length > 0) {
+    //   if (fieldCards.value.includes(card)) {
+    //     const cardIdx = pickedForTurnCards.value.indexOf(card);
+    //     pickedForTurnCards.value.splice(cardIdx, 1);
 
-      }
-      else if (!fieldCards.value.find(fieldCard => fieldCard.rank === card.rank)) {
-        return
-      } else pickedForTurnCards.value.push(card)
+    //   }
+    //   else if (!fieldCards.value.find(fieldCard => fieldCard.rank === card.rank)) {
+    //     return
+    //   } else pickedForTurnCards.value.push(card)
+    // }
+
+    const availableRanks = []
+    // fieldCards.value.map(card => {
+    fieldCards.map(card => {
+      availableRanks.push(card.rank)
+    })
+
+    // if (availableRanks.includes(card.rank)) {
+    //   pickedForTurnCards.value.push(card)
+    // }
+    // else return
+
+    if (pickedForTurnCards.value.includes(card)) {
+      const cardIdx = pickedForTurnCards.value.indexOf(card);
+      pickedForTurnCards.value.splice(cardIdx, 1);
+
+    }
+    else if (availableRanks.includes(card.rank)) {
+      pickedForTurnCards.value.push(card)
     }
   }
 }
@@ -259,14 +289,14 @@ const finalBeatSet = ref([])
 
 const canBeat = computed(() => {
 
-  if (pickedForDefenceCards.value.length > 0 && pickedForDefenceCards.value.length === fieldCards.value.length) {
+  if (pickedForDefenceCards.value.length > 0 && pickedForDefenceCards.value.length === attackCards.value.length) {
     const pickedCardsCopy = pickedForDefenceCards.value
 
     const beatSet = []
 
     const canBeat = ref(true)
 
-    fieldCards.value.map(fieldCard => {
+    attackCards.value.map(fieldCard => {
       const canBeatSet = []
       pickedCardsCopy.map(defenceCard => {
         if (defenceCard.suit === fieldCard.suit || defenceCard.suit === trumpCard.value.suit && defenceCard.value > fieldCard.value) {
@@ -283,7 +313,7 @@ const canBeat = computed(() => {
       if (pickedCardsCopy.length > 0) {
         canBeatSet.reduce((minCard, currentCard) => {
           return currentCard.value < minCard.value ? currentCard : minCard;
-        });
+        }, []);
       }
 
       beatSet.push(...canBeatSet)
@@ -302,10 +332,13 @@ const playerOneTurn = ref(true)
 
 const endTurn = () => {
   playerOneTurn.value = !playerOneTurn.value
+
 }
 
 const makeTurn = () => {
-  fieldCards.value.push(...pickedForTurnCards.value)
+  fieldAttackCards.value.push(...pickedForTurnCards.value)
+  fieldCards.push(...pickedForTurnCards.value)
+  attackCards.value.push(...pickedForTurnCards.value)
   if (playerOneTurn.value) {
     pickedForTurnCards.value.map(card => playerOneHand.value.splice(playerOneHand.value.indexOf(card), 1))
   } else {
@@ -318,17 +351,26 @@ const makeTurn = () => {
 const makeDefenceTurn = () => {
   if (canBeat.value) {
     fieldDefenceCards.value.push(...finalBeatSet.value)
+    fieldCards.push(...fieldDefenceCards.value)
+    // fieldCards.push(...finalBeatSet.value)
     console.log('def cards', finalBeatSet.value)
     if (playerOneTurn.value) {
       finalBeatSet.value.map(card => playerOneHand.value.splice(playerOneHand.value.indexOf(card), 1))
     } else {
       finalBeatSet.value.map(card => playerTwoHand.value.splice(playerTwoHand.value.indexOf(card), 1))
     }
-    fieldCards.value.push(...fieldDefenceCards.value)
-    pickedForDefenceCards.value = [fieldDefenceCards.value]
+    // fieldCards.value.push(...fieldDefenceCards.value)
+
+    pickedForDefenceCards.value = []
+    // fieldAttackCards.value = []
+    // fieldDefenceCards.value = []
+    finalBeatSet.value = []
+    attackCards.value = []
+    defenceCards.value = []
     endTurn()
   }
   else {
+    finalBeatSet.value = []
     console.log('Can\'t beat! :\'(')
   }
 
