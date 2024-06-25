@@ -1,5 +1,5 @@
 <template>
-    <div class="w-[200px] h-[300px] border border-[#2e2d2dad] rounded-lg flex justify-center items-center bg-[#FFFFFF]">
+    <div class="w-[200px] h-[300px] border border-[#2e2d2dad] rounded-lg flex justify-center items-start bg-[#FFFFFF]">
         <p class="text-5xl" :class="suitColor">
             <span v-html="suit"></span>
             {{ card.rank }}
