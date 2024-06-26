@@ -8,11 +8,29 @@
         <div class="flex flex-col justify-between items-center gap-24 h-full">
           <div>
             <p>Player 1:</p>
+            <div class="flex items-center gap-2 text-white my-4">
+              <div>
+                <button class="px-4 py-2 bg-slate-400 hover:bg-slate-500 duration-300 rounded border border-[#64748b]"
+                  @click="playerOneAttackRound ? makeAttackTurn() : null">Make Turn</button>
+              </div>
+              <div>
+                <button class="px-4 py-2 bg-slate-400 hover:bg-slate-500 duration-300 rounded border border-[#64748b]"
+                  @click="!playerOneAttackPhase && playerOneTurn ? makeDefenceTurn() : null">Make Defence Turn</button>
+              </div>
+              <div>
+                <button class="px-4 py-2 bg-slate-400 hover:bg-slate-500 duration-300 rounded border border-[#64748b]"
+                  @click="playerOneAttackRound ? endRound() : null">Beaten</button>
+              </div>
+              <div>
+                <button class="px-4 py-2 bg-slate-400 hover:bg-slate-500 duration-300 rounded border border-[#64748b]"
+                  @click="!playerOneAttackPhase && playerOneTurn ? grabCards() : null">Grab</button>
+              </div>
+            </div>
             <div class="flex flex-wrap gap-2">
 
               <Card v-for="card in playerOneHand" :key="card.id" :card="card"
-                @click="playerOneTurn ? pickForTurn(card) : null" class="cursor-pointer"
-                :class="{ 'translate-y-[-12px]': pickedForTurnCards.includes(card) }" />
+                @click="playerOneAttackRound ? pickForTurn(card) : pickForDefence(card)" class="cursor-pointer"
+                :class="{ 'translate-y-[-12px]': pickedForDefenceCards.includes(card), 'translate-y-[-12px]': pickedForTurnCards.includes(card) }" />
 
             </div>
           </div>
@@ -28,11 +46,29 @@
 
           <div>
             <p>Player 2:</p>
+            <div class="flex items-center gap-2 text-white my-4">
+              <div>
+                <button class="px-4 py-2 bg-slate-400 hover:bg-slate-500 duration-300 rounded border border-[#64748b]"
+                  @click="playerTwoAttackRound ? makeAttackTurn() : null">Make Turn</button>
+              </div>
+              <div>
+                <button class="px-4 py-2 bg-slate-400 hover:bg-slate-500 duration-300 rounded border border-[#64748b]"
+                  @click="playerOneAttackPhase && !playerOneTurn ? makeDefenceTurn() : null">Make Defence Turn</button>
+              </div>
+              <div>
+                <button class="px-4 py-2 bg-slate-400 hover:bg-slate-500 duration-300 rounded border border-[#64748b]"
+                  @click="playerTwoAttackRound ? endRound() : null">Beaten</button>
+              </div>
+              <div>
+                <button class="px-4 py-2 bg-slate-400 hover:bg-slate-500 duration-300 rounded border border-[#64748b]"
+                  @click="playerOneAttackPhase && !playerOneTurn ? grabCards() : null">Grab</button>
+              </div>
+            </div>
             <div class="flex flex-wrap gap-2">
 
               <Card v-for="card in playerTwoHand" :key="card.id" :card="card"
-                @click="playerOneTurn ? null : pickForDefence(card)" class="cursor-pointer"
-                :class="{ 'translate-y-[-12px]': pickedForDefenceCards.includes(card) }" />
+                @click="playerTwoAttackRound ? pickForTurn(card) : pickForDefence(card)" class="cursor-pointer"
+                :class="{ 'translate-y-[-12px]': pickedForDefenceCards.includes(card), 'translate-y-[-12px]': pickedForTurnCards.includes(card) }" />
 
             </div>
           </div>
@@ -42,7 +78,7 @@
         </div>
       </div>
     </div>
-    <div class="flex gap-2">
+    <!-- <div class="flex gap-2">
       <div>
         <button @click="makeAttackTurn">Make Turn</button>
       </div>
@@ -55,7 +91,7 @@
       <div>
         <button @click="grabCards">Grab</button>
       </div>
-    </div>
+    </div> -->
   </main>
 </template>
 
@@ -64,6 +100,19 @@ import Card from '../components/Card.vue'
 import { ref, computed } from 'vue';
 
 const gameStarted = ref(false)
+
+const playerOneTurn = ref(true)
+
+const playerOneAttackPhase = ref(true)
+// const playerTwoAttackPhase = ref(false)
+
+const playerOneAttackRound = computed(() => {
+  return playerOneAttackPhase.value && playerOneTurn.value
+})
+
+const playerTwoAttackRound = computed(() => {
+  return !playerOneAttackPhase.value && !playerOneTurn.value
+})
 
 const trumpCard = ref({})
 
@@ -85,8 +134,6 @@ const defenceCards = ref([])
 
 const pickedForTurnCards = ref([])
 const pickedForDefenceCards = ref([])
-
-const playerOneTurn = ref(true)
 
 const deck = ref([
   { "id": 1, "suit": "hearts", "rank": "6", "value": 6, "image": "/images/cards/H6.png" },
@@ -176,40 +223,44 @@ const setDefaultDeck = () => {
 
 const dealplayerOneHand = () => {
   const hand = playerOneHand.value
-  do {
-    const cardIdx = Math.floor(Math.random() * deck.value.length);
-    const card = deck.value[cardIdx]
-    if (deck.value.length > 0) {
-      hand.push(card)
-      deck.value.splice(cardIdx, 1)
-    }
-    else {
-      if (trumpOnTable.value) {
-        hand.push(trumpCard.value)
-        trumpOnTable.value = false
+  if (hand.length < 6) {
+    do {
+      const cardIdx = Math.floor(Math.random() * deck.value.length);
+      const card = deck.value[cardIdx]
+      if (deck.value.length > 0) {
+        hand.push(card)
+        deck.value.splice(cardIdx, 1)
       }
-    }
-  } while (hand.length < 6 && deck.value.length > 0);
+      else {
+        if (trumpOnTable.value) {
+          hand.push(trumpCard.value)
+          trumpOnTable.value = false
+        }
+      }
+    } while (hand.length < 6 && deck.value.length > 0);
+  }
 
   return playerOneHand.value = hand
 }
 
 const dealplayerTwoHand = () => {
   const hand = playerTwoHand.value
-  do {
-    const cardIdx = Math.floor(Math.random() * deck.value.length);
-    const card = deck.value[cardIdx]
-    if (deck.value.length > 0) {
-      hand.push(card)
-      deck.value.splice(cardIdx, 1)
-    }
-    else {
-      if (trumpOnTable.value) {
-        hand.push(trumpCard.value)
-        trumpOnTable.value = false
+  if (hand.length < 6) {
+    do {
+      const cardIdx = Math.floor(Math.random() * deck.value.length);
+      const card = deck.value[cardIdx]
+      if (deck.value.length > 0) {
+        hand.push(card)
+        deck.value.splice(cardIdx, 1)
       }
-    }
-  } while (hand.length < 6 && deck.value.length > 0);
+      else {
+        if (trumpOnTable.value) {
+          hand.push(trumpCard.value)
+          trumpOnTable.value = false
+        }
+      }
+    } while (hand.length < 6 && deck.value.length > 0);
+  }
 
   return playerTwoHand.value = hand
 }
@@ -381,6 +432,8 @@ const winningAward = () => {
 }
 
 const endRound = () => {
+  endTurn()
+  playerOneAttackPhase.value = !playerOneAttackPhase.value
   fieldAttackCards.value = []
   fieldDefenceCards.value = []
   attackCards.value = []
@@ -393,7 +446,14 @@ const endRound = () => {
 }
 
 const grabCards = () => {
-  playerTwoHand.value.push(...fieldCards.value)
+  endTurn()
+
+  if (playerOneAttackPhase.value && !playerOneTurn.value) {
+    playerTwoHand.value.push(...fieldCards.value)
+  } else if (!playerOneAttackPhase.value && playerOneTurn.value) {
+    playerOneHand.value.push(...fieldCards.value)
+  }
+
   fieldAttackCards.value = []
   fieldDefenceCards.value = []
   attackCards.value = []
